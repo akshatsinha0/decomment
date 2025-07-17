@@ -3,40 +3,106 @@ name: Dependabot Auto-merge
 on:
   pull_request:
     types: [opened, synchronize]
+  workflow_run:
+    workflows: ["CI/CD Pipeline", "Security Analysis"]
+    types: [completed]
 
 jobs:
   auto-merge:
     name: Auto-merge Dependabot PRs
     runs-on: ubuntu-latest
     if: github.actor == 'dependabot[bot]'
-    
+    timeout-minutes: 10
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18.x'
         cache: 'npm'
-        
+
     - name: Install dependencies
       run: npm ci
-      
+
+    - name: Run security audit
+      run: npm audit --audit-level=high --production
+      continue-on-error: false
+
+    - name: Check for security vulnerabilities
+      run: |
+        if npm audit --audit-level=critical --json | grep -q '"vulnerabilities"'; then
+          echo "❌ Critical vulnerabilities detected - blocking auto-merge"
+          exit 1
+        else
+          echo "✅ No critical vulnerabilities found"
+        fi
+
     - name: Run tests
       run: npm run test:ci
-      
-    - name: Auto-merge patch updates
-      if: contains(github.event.pull_request.title, 'patch')
+
+    - name: Determine update type
+      id: update-type
       run: |
-        gh pr review --approve "${{ github.event.pull_request.number }}"
+        PR_TITLE="${{ github.event.pull_request.title }}"
+        echo "PR Title: $PR_TITLE"
+
+        # Check for patch updates (including GitHub Actions patch updates)
+        if echo "$PR_TITLE" | grep -qE "(patch|from [0-9]+\.[0-9]+\.[0-9]+ to [0-9]+\.[0-9]+\.[0-9]+$)"; then
+          echo "update-type=patch" >> $GITHUB_OUTPUT
+          echo "Detected patch update"
+        # Check for minor updates
+        elif echo "$PR_TITLE" | grep -qE "(minor|from [0-9]+\.[0-9]+ to [0-9]+\.[0-9]+|from [0-9]+\.[0-9]+\.[0-9]+ to [0-9]+\.[0-9]+\.[0-9]+)"; then
+          echo "update-type=minor" >> $GITHUB_OUTPUT
+          echo "Detected minor update"
+        # Check for major updates
+        elif echo "$PR_TITLE" | grep -qE "(major|from [0-9]+ to [0-9]+)"; then
+          echo "update-type=major" >> $GITHUB_OUTPUT
+          echo "Detected major update"
+        else
+          echo "update-type=unknown" >> $GITHUB_OUTPUT
+          echo "Could not determine update type"
+        fi
+
+    - name: Auto-approve and merge patch updates
+      if: steps.update-type.outputs.update-type == 'patch'
+      run: |
+        echo "🔄 Auto-merging patch update after successful tests and security checks"
+        gh pr review --approve "${{ github.event.pull_request.number }}" --body "✅ Auto-approving patch update - tests passed and no security issues detected"
         gh pr merge --auto --squash "${{ github.event.pull_request.number }}"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
-    - name: Auto-merge minor updates (after manual review)
-      if: contains(github.event.pull_request.title, 'minor')
+
+    - name: Comment on minor updates
+      if: steps.update-type.outputs.update-type == 'minor'
       run: |
-        gh pr review --comment "Auto-approving minor dependency update after successful tests" "${{ github.event.pull_request.number }}"
+        echo "📝 Minor update detected - requires manual review"
+        gh pr review --comment "🔍 **Minor dependency update detected**
+
+✅ Tests passed
+✅ Security audit passed
+⚠️ **Manual review required** for minor version updates
+
+Please review the changes and approve manually if everything looks good." "${{ github.event.pull_request.number }}"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Comment on major updates
+      if: steps.update-type.outputs.update-type == 'major'
+      run: |
+        echo "⚠️ Major update detected - requires careful manual review"
+        gh pr review --comment "🚨 **Major dependency update detected**
+
+✅ Tests passed
+✅ Security audit passed
+⚠️ **Careful manual review required** for major version updates
+
+Major updates may include breaking changes. Please:
+1. Review the changelog/release notes
+2. Test thoroughly
+3. Consider the impact on the codebase
+4. Approve manually if safe to proceed" "${{ github.event.pull_request.number }}"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

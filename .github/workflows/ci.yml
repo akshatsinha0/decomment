@@ -12,32 +12,55 @@ jobs:
   test:
     name: Test on Node.js ${{ matrix.node-version }} and ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    
+    timeout-minutes: 10
+
     strategy:
       matrix:
-        node-version: [14.x, 16.x, 18.x, 20.x]
+        node-version: [16.x, 18.x, 20.x]
         os: [ubuntu-latest, windows-latest, macos-latest]
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-        
+
     - name: Install dependencies
       run: npm ci
-      
+
     - name: Run linting
       run: npm run lint
       continue-on-error: true
-      
-    - name: Run tests
+
+    - name: Run tests with proper error reporting
       run: npm run test:ci
-      
+      env:
+        CI: true
+        JEST_JUNIT_OUTPUT_DIR: ./test-results
+        JEST_JUNIT_OUTPUT_NAME: junit.xml
+
+    - name: Check code coverage threshold
+      if: matrix.node-version == '18.x' && matrix.os == 'ubuntu-latest'
+      run: |
+        npm run test:coverage --silent > coverage_output.txt 2>&1 || true
+        if grep -q "All files" coverage_output.txt; then
+          COVERAGE=$(grep "All files" coverage_output.txt | grep -o '[0-9]\+\.[0-9]\+' | head -1)
+          echo "Current coverage: $COVERAGE%"
+          if [ $(echo "$COVERAGE < 80" | awk '{print ($1 < $3)}') -eq 1 ]; then
+            echo "⚠️ Warning: Code coverage ($COVERAGE%) is below 80% threshold"
+            echo "coverage-warning=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Code coverage ($COVERAGE%) meets the 80% threshold"
+          fi
+        else
+          echo "Could not determine coverage percentage"
+          cat coverage_output.txt
+        fi
+
     - name: Upload coverage to Codecov
       if: matrix.node-version == '18.x' && matrix.os == 'ubuntu-latest'
       uses: codecov/codecov-action@v5
@@ -45,54 +68,110 @@ jobs:
         file: ./coverage/lcov.info
         flags: unittests
         name: codecov-umbrella
-        
+        fail_ci_if_error: false
+
+    - name: Report coverage status
+      if: matrix.node-version == '18.x' && matrix.os == 'ubuntu-latest' && github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          try {
+            const output = fs.readFileSync('coverage_output.txt', 'utf8');
+            const coverageMatch = output.match(/All files[^\d]*(\d+\.?\d*)/);
+            if (coverageMatch) {
+              const coverage = parseFloat(coverageMatch[1]);
+              const status = coverage >= 80 ? 'success' : 'failure';
+              const description = coverage >= 80
+                ? `✅ Code coverage: ${coverage}% (meets 80% threshold)`
+                : `⚠️ Code coverage: ${coverage}% (below 80% threshold)`;
+
+              await github.rest.repos.createCommitStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                sha: context.sha,
+                state: status,
+                target_url: `https://codecov.io/gh/${context.repo.owner}/${context.repo.repo}`,
+                description: description,
+                context: 'coverage/threshold'
+              });
+            }
+          } catch (error) {
+            console.log('Could not read coverage output:', error.message);
+          }
+
     - name: Verify package
       run: npm run verify
+
+    - name: Generate test summary
+      if: always()
+      run: |
+        echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Platform**: ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Node.js**: ${{ matrix.node-version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Timestamp**: $(date)" >> $GITHUB_STEP_SUMMARY
 
   security:
     name: Security Audit
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 10
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18.x'
         cache: 'npm'
-        
+
     - name: Install dependencies
       run: npm ci
-      
+
     - name: Run security audit
       run: npm audit --audit-level=moderate
-      
+
     - name: Check for vulnerabilities
       run: npm audit --audit-level=high --production
+
+    - name: Generate security summary
+      if: always()
+      run: |
+        echo "## Security Audit Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Timestamp**: $(date)" >> $GITHUB_STEP_SUMMARY
+
+        # Get audit results
+        npm audit --json > audit_results.json 2>/dev/null || true
+        if [ -f audit_results.json ]; then
+          VULNERABILITIES=$(cat audit_results.json | grep -o '"vulnerabilities":[0-9]*' | cut -d':' -f2 || echo "0")
+          echo "- **Vulnerabilities Found**: $VULNERABILITIES" >> $GITHUB_STEP_SUMMARY
+        fi
 
   build:
     name: Build and Package
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [test, security]
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18.x'
         cache: 'npm'
-        
+
     - name: Install dependencies
       run: npm ci
-      
+
     - name: Create package
       run: npm pack
-      
+
     - name: Upload package artifact
       uses: actions/upload-artifact@v4
       with:
@@ -102,26 +181,27 @@ jobs:
   publish:
     name: Publish to NPM
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [test, security, build]
     if: github.event_name == 'release' && github.event.action == 'published'
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18.x'
         cache: 'npm'
         registry-url: 'https://registry.npmjs.org'
-        
+
     - name: Install dependencies
       run: npm ci
-      
+
     - name: Run tests
       run: npm run test:ci
-      
+
     - name: Publish to NPM
       run: npm publish
       env:
@@ -130,38 +210,39 @@ jobs:
   integration-test:
     name: Integration Test
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     needs: [build]
-    
+
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18.x'
-        
+
     - name: Download package artifact
       uses: actions/download-artifact@v4
       with:
         name: npm-package
-        
+
     - name: Install package globally
       run: npm install -g *.tgz
-      
+
     - name: Test CLI installation
       run: 00akshatsinha00decomment --version
-      
+
     - name: Test CLI functionality
       run: |
         echo "// Test comment" > test.js
         echo "console.log('test');" >> test.js
         00akshatsinha00decomment test.js
-        
+
     - name: Test CLI with write option
       run: |
         echo "/* CSS comment */" > test.css

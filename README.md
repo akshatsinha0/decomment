@@ -1,5 +1,12 @@
 # 00akshatsinha00decomment
 
+[![CI/CD Pipeline](https://github.com/00akshatsinha00/00akshatsinha00decomment/actions/workflows/ci.yml/badge.svg)](https://github.com/00akshatsinha00/00akshatsinha00decomment/actions/workflows/ci.yml)
+[![Security Analysis](https://github.com/00akshatsinha00/00akshatsinha00decomment/actions/workflows/security.yml/badge.svg)](https://github.com/00akshatsinha00/00akshatsinha00decomment/actions/workflows/security.yml)
+[![Release](https://github.com/00akshatsinha00/00akshatsinha00decomment/actions/workflows/release.yml/badge.svg)](https://github.com/00akshatsinha00/00akshatsinha00decomment/actions/workflows/release.yml)
+[![codecov](https://codecov.io/gh/00akshatsinha00/00akshatsinha00decomment/branch/main/graph/badge.svg)](https://codecov.io/gh/00akshatsinha00/00akshatsinha00decomment)
+[![npm version](https://badge.fury.io/js/00akshatsinha00decomment.svg)](https://badge.fury.io/js/00akshatsinha00decomment)
+[![Node.js Version](https://img.shields.io/node/v/00akshatsinha00decomment.svg)](https://nodejs.org/)
+
 A powerful command-line tool that removes comments from your source code files while preserving the functionality of your code. Perfect for cleaning up codebases, preparing code for production, or creating comment-free versions of your files.
 
 ## Installation

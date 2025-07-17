@@ -16,10 +16,26 @@ program
     .argument('<glob...>', 'glob pattern(s) of files to decomment')
     .action((patterns, opts)=>{
         try{
+            const excludePatterns=[
+                '**/node_modules/**',
+                '**/.git/**',
+                '**/coverage/**',
+                '**/dist/**',
+                '**/build/**',
+                '**/.next/**',
+                '**/.nuxt/**',
+                '**/vendor/**',
+                '**/.vscode/**',
+                '**/.idea/**'
+            ]
+
             const files=patterns
                 .flatMap(pattern=>{
                     try{
-                        return glob.sync(pattern, { nodir: true })
+                        return glob.sync(pattern, {
+                            nodir: true,
+                            ignore: excludePatterns
+                        })
                     }catch(error){
                         console.error(`Error processing pattern "${pattern}": ${error.message}`)
                         return []
