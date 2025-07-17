@@ -1,0 +1,22 @@
+/* CSS header comment */
+body {
+    margin: 0; /* Remove default margin */
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+/* Navigation styles */
+.nav {
+    background-color: #333;
+    /* Dark background */
+    color: white;
+}
+
+/* 
+Multi-line CSS comment
+for styling information
+*/
+.container {
+    max-width: 1200px;
+    margin: 0 auto; /* Center the container */
+}

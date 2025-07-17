@@ -1,0 +1,69 @@
+{
+  "name": "00akshatsinha00decomment",
+  "version": "1.0.0",
+  "description": "A CLI tool to remove comments from source code files",
+  "main": "bin/document.js",
+  "bin": {
+    "00akshatsinha00decomment": "./bin/document.js"
+  },
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --watchAll=false",
+    "lint": "echo 'No linting configured'",
+    "clean": "rimraf coverage dist",
+    "prepublishOnly": "npm run test:ci",
+    "prepack": "npm run test:ci",
+    "verify": "node scripts/verify-package.js",
+    "start": "node bin/document.js",
+    "dev": "node bin/document.js"
+  },
+  "keywords": [
+    "cli",
+    "comments",
+    "remove",
+    "strip",
+    "decomment",
+    "source-code",
+    "javascript",
+    "typescript",
+    "css",
+    "html",
+    "code-cleanup",
+    "developer-tools",
+    "build-tools",
+    "preprocessing"
+  ],
+  "author": {
+    "name": "00akshatsinha00",
+    "email": "contact@example.com"
+  },
+  "license": "ISC",
+  "homepage": "https://github.com/00akshatsinha00/00akshatsinha00decomment#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/00akshatsinha00/00akshatsinha00decomment.git"
+  },
+  "bugs": {
+    "url": "https://github.com/00akshatsinha00/00akshatsinha00decomment/issues"
+  },
+  "type": "commonjs",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "files": [
+    "bin/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "dependencies": {
+    "commander": "^14.0.0",
+    "glob": "^11.0.3",
+    "strip-comments": "^2.0.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
