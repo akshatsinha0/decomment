@@ -1,0 +1,15 @@
+{
+  "name": "test-application",
+  "version": "1.0.0",
+  "description": "Test configuration file",
+  "settings": {
+    "debug": true,
+    "port": 3000,
+    "host": "localhost"
+  },
+  "features": {
+    "authentication": true,
+    "logging": true,
+    "caching": false
+  }
+}
