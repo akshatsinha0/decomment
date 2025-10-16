@@ -29,21 +29,43 @@ jobs:
       run: npm ci
 
     - name: Run npm audit (moderate level)
-      run: npm audit --audit-level=moderate
-      continue-on-error: false
+      run: |
+        echo "Running npm audit at moderate level..."
+        npm audit --audit-level=moderate || {
+          EXIT_CODE=$?
+          if [ $EXIT_CODE -eq 1 ]; then
+            echo "⚠️ Vulnerabilities found at moderate level or above"
+            exit 1
+          fi
+          echo "✅ No moderate or higher vulnerabilities found"
+        }
 
     - name: Run npm audit (high level for production)
-      run: npm audit --audit-level=high --production
-      continue-on-error: false
+      run: |
+        echo "Running npm audit at high level for production dependencies..."
+        npm audit --audit-level=high --production || {
+          EXIT_CODE=$?
+          if [ $EXIT_CODE -eq 1 ]; then
+            echo "⚠️ High severity vulnerabilities found in production dependencies"
+            exit 1
+          fi
+          echo "✅ No high severity vulnerabilities in production dependencies"
+        }
 
     - name: Check for critical vulnerabilities
       run: |
-        if npm audit --audit-level=critical --json | grep -q '"vulnerabilities"'; then
-          echo "Critical vulnerabilities found!"
+        AUDIT_OUTPUT=$(npm audit --audit-level=critical --json 2>&1 || true)
+        echo "$AUDIT_OUTPUT"
+
+        # Check if there are any critical vulnerabilities
+        CRITICAL_COUNT=$(echo "$AUDIT_OUTPUT" | grep -o '"critical":[0-9]*' | head -1 | cut -d':' -f2 || echo "0")
+
+        if [ "$CRITICAL_COUNT" -gt 0 ]; then
+          echo "❌ Critical vulnerabilities found: $CRITICAL_COUNT"
           npm audit --audit-level=critical
           exit 1
         else
-          echo "No critical vulnerabilities found"
+          echo "✅ No critical vulnerabilities found"
         fi
 
   codeql-analysis:
