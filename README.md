@@ -240,7 +240,7 @@ If your glob pattern isn't matching files:
 
 ## Requirements
 
-- **Node.js**: Version 14.0.0 or higher
+- **Node.js**: Version 18.0.0 or higher
 - **Operating Systems**: Windows, macOS, Linux
 
 ## License
