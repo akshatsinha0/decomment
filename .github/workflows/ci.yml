@@ -230,9 +230,11 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: npm-package
+        path: ./package
 
     - name: Install package globally
-      run: npm install -g *.tgz
+      shell: bash
+      run: npm install -g ./package/*.tgz
 
     - name: Test CLI installation
       run: 00akshatsinha00decomment --version
