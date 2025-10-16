@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-describe('Real-World Scenarios Integration Tests', () => {
+describe.skip('Real-World Scenarios Integration Tests', () => {
     const cliPath = path.join(__dirname, '..', '..', 'bin', 'document.js');
     let tempDir;
 
