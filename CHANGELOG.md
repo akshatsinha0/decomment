@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-01-18
+
+### Fixed
+- Security workflow vulnerability detection logic to prevent false positives
+- Critical vulnerability check now correctly parses JSON output count
+- Improved error handling in security audit steps
+
+### Added
+- Comprehensive test suite with 164 test cases
+- Integration tests for real-world scenarios
+- Edge case tests for comment removal
+- Performance tests for large codebases
+- Tests for all CLI commands and options
+- Tests for multiple file types and encodings
+
+### Changed
+- Enhanced security workflow logging and status messages
+- Improved test coverage across all modules
+
 ## [1.0.0] - 2025-01-17
 
 ### Added
